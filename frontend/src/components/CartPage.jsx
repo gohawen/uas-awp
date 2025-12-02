@@ -1,31 +1,47 @@
-import React, { useMemo, useState } from 'react'; // Import useState
-import { Link, useNavigate } from 'react-router-dom'; // Import useNavigate
+import React, { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Navbar from './Navbar'; 
 import Footer from './Footer'; 
-import CheckoutModal from './CheckoutModal'; // Import Modal
+import CheckoutModal from './CheckoutModal';
+import ExitConfirmationModal from './ExitConfirmationModal'; // <-- IMPORT BARU
 
 const CartPage = ({ cartItems, onUpdateQuantity, isLoggedIn, userName, onLogout, cartCount }) => {
     
     const navigate = useNavigate();
-    const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false); // State Modal
+    const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
     
-    // 1. Data Cart
-    const currentCart = cartItems; 
-    
-    // 2. Kalkulasi Data (di-memo untuk efisiensi)
+    // START LOGIC BLOCKING NAVIGASI
+    const [isExitModalOpen, setIsExitModalOpen] = useState(false); // <-- STATE BARU
+    const [targetSection, setTargetSection] = useState(null); // <-- STATE BARU
+
+    // Fungsi yang dipicu saat Navbar menekan tombol navigasi
+    const handleNavAttempt = (id) => {
+        setTargetSection(id);
+        setIsExitModalOpen(true);
+    };
+
+    // Fungsi yang dipicu saat user mengkonfirmasi 'Keluar' dari modal
+    const handleConfirmExit = () => {
+        setIsExitModalOpen(false);
+        // Kita tidak bisa menggunakan onScroll, tapi kita bisa menggunakan navigate ke '/' dan mengembalikannya ke LandingPage yang memiliki fungsi onScroll
+        navigate('/', { state: { targetId: targetSection } }); 
+        // Note: Implementasi yang lebih kompleks akan memerlukan state management global untuk memicu onScroll di LandingPage
+    };
+    // END LOGIC BLOCKING NAVIGASI
+
+    // ... (Logika Kalkulasi tetap sama)
     const { subtotal, totalItems } = useMemo(() => {
-        const total = currentCart.reduce((sum, item) => sum + (item.qty * item.price), 0);
-        const count = currentCart.reduce((sum, item) => sum + item.qty, 0);
+        const total = cartItems.reduce((sum, item) => sum + (item.qty * item.price), 0);
+        const count = cartItems.reduce((sum, item) => sum + item.qty, 0);
         return { subtotal: total, totalItems: count };
-    }, [currentCart]);
+    }, [cartItems]);
 
     const deliveryFee = 15000;
     const finalTotal = subtotal > 100000 ? subtotal : subtotal + deliveryFee;
 
-
-    // 3. HANDLER UNTUK CHECKOUT
+    // ... (Handler Checkout tetap sama)
     const handleOpenCheckout = () => {
-        if (currentCart.length === 0) {
+        if (cartItems.length === 0) {
             alert("Keranjang masih kosong!");
             return;
         }
@@ -33,30 +49,29 @@ const CartPage = ({ cartItems, onUpdateQuantity, isLoggedIn, userName, onLogout,
     };
 
     const handleConfirmOrder = () => {
-        // Logika final untuk menyelesaikan transaksi
         alert(`Pesanan Rp ${finalTotal.toLocaleString('id-ID')} telah dikonfirmasi dan siap dibayar. Terima kasih, ${userName}!`);
         setIsCheckoutModalOpen(false);
-        // Di sini Anda akan memanggil API pembayaran dan mengosongkan keranjang
-        // Contoh: navigate('/success-page');
-        navigate('/'); // Redirect kembali ke beranda untuk demo
+        navigate('/');
     };
 
     return (
         <div className="bg-blue-50 min-h-screen">
+            {/* Meneruskan handleNavAttempt sebagai onNavigating */}
             <Navbar 
                 cartCount={cartCount} 
                 isLoggedIn={isLoggedIn} 
                 userName={userName}
                 onLogout={onLogout}
+                onNavigating={handleNavAttempt} // <-- PROPS BARU
             />
 
+            {/* ... Konten CartPage (sama) ... */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <h1 className="text-4xl font-extrabold text-gray-800 mb-8 flex items-center">
                     <i className="fas fa-shopping-basket text-blue-600 mr-4"></i> Keranjang Belanja Anda
                 </h1>
 
-                {currentCart.length === 0 ? (
-                    // ... (Tampilan Keranjang Kosong tetap sama)
+                {cartItems.length === 0 ? (
                     <div className="text-center py-20 bg-white rounded-xl shadow-lg">
                         <i className="fas fa-box-open text-6xl text-gray-400 mb-4"></i>
                         <p className="text-xl text-gray-600 mb-4">Keranjang Anda masih kosong.</p>
@@ -68,7 +83,7 @@ const CartPage = ({ cartItems, onUpdateQuantity, isLoggedIn, userName, onLogout,
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Kolom Kiri: Detail Item (Tetap Sama) */}
                         <div className="lg:col-span-2 space-y-4">
-                            {currentCart.map((item) => (
+                            {cartItems.map((item) => (
                                 <div key={item.id} className="flex items-center bg-white p-4 rounded-xl shadow-md justify-between">
                                     <div className="flex items-center space-x-4 w-1/2">
                                         <i className={`text-3xl ${item.type === 'Layanan' ? 'fas fa-tshirt text-blue-500' : 'fas fa-box text-green-500'}`}></i>
@@ -78,7 +93,6 @@ const CartPage = ({ cartItems, onUpdateQuantity, isLoggedIn, userName, onLogout,
                                         </div>
                                     </div>
 
-                                    {/* Kuantitas Controls */}
                                     <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
                                         <button 
                                             onClick={() => onUpdateQuantity(item.id, -1)}
@@ -102,7 +116,7 @@ const CartPage = ({ cartItems, onUpdateQuantity, isLoggedIn, userName, onLogout,
                             ))}
                         </div>
 
-                        {/* Kolom Kanan: Ringkasan Pembayaran */}
+                        {/* Kolom Kanan: Ringkasan Pembayaran (Tetap Sama) */}
                         <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg h-fit sticky top-20">
                             <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Ringkasan Pesanan</h2>
                             <div className="space-y-3 text-gray-600">
@@ -122,7 +136,7 @@ const CartPage = ({ cartItems, onUpdateQuantity, isLoggedIn, userName, onLogout,
                                 </div>
                             </div>
                             <button 
-                                onClick={handleOpenCheckout} // Memicu Modal Checkout
+                                onClick={handleOpenCheckout} 
                                 className="w-full mt-6 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition duration-200 shadow-md transform hover:scale-[1.01]">
                                 Proses Pembayaran
                             </button>
@@ -140,12 +154,19 @@ const CartPage = ({ cartItems, onUpdateQuantity, isLoggedIn, userName, onLogout,
             <CheckoutModal
                 isOpen={isCheckoutModalOpen}
                 onClose={() => setIsCheckoutModalOpen(false)}
-                cartItems={currentCart}
+                cartItems={cartItems}
                 subtotal={subtotal}
                 finalTotal={finalTotal}
                 deliveryFee={deliveryFee}
                 onConfirmOrder={handleConfirmOrder}
                 userName={userName}
+            />
+
+            {/* Modal Konfirmasi Keluar */}
+            <ExitConfirmationModal
+                isOpen={isExitModalOpen}
+                onClose={() => setIsExitModalOpen(false)}
+                onConfirmExit={handleConfirmExit}
             />
         </div>
     );
